@@ -2,4 +2,5 @@ keys
 .venv
 utils/__pycache__
 .fabric/fabric_rc
+.fabric/ssh_config
 .ds_store
