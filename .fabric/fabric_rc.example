@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+export FABRIC_CREDMGR_HOST=cm.fabric-testbed.net
+export FABRIC_ORCHESTRATOR_HOST=orchestrator.fabric-testbed.net
+export FABRIC_PROJECT_ID=
+export FABRIC_TOKEN_LOCATION=keys/id_token.json
+
+export FABRIC_BASTION_HOST=bastion.fabric-testbed.net
+export FABRIC_BASTION_USERNAME=
+export FABRIC_BASTION_KEY_LOCATION=keys/fabric-bastion-key
+
+export FABRIC_SLICE_PRIVATE_KEY_FILE=keys/slice_key
+export FABRIC_SLICE_PUBLIC_KEY_FILE=keys/slice_key.pub
+
+export SHELL=/bin/bash

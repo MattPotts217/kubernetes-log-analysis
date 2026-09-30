@@ -1,4 +1,5 @@
 keys
 .venv
 utils/__pycache__
-.fabric
+.fabric/fabric_rc
+.ds_store
