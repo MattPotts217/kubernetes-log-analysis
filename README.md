@@ -31,4 +31,4 @@ chmod 600 keys/fabric-bastion-key
 chmod 600 keys/slice_key
 ```
 
-After permissions are properly set, you can use ```ssh -F .fabric/ssh_config -i keys/slice_key <node_management_ip_address>``` to SSH into an active node.
+After permissions are properly set, you can use ```ssh -F .fabric/ssh_config -i keys/slice_key <ubuntu@node_management_ip_address>``` to SSH into an active node.
