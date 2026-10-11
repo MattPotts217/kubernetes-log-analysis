@@ -3,10 +3,10 @@
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_TEMPLATES_DIR = _REPO_ROOT / "478_examples" / "templates"
-DEFAULT_PLAYBOOK_DIR = _REPO_ROOT / "478_examples" / "playbook"
+DEFAULT_TEMPLATES_DIR = _REPO_ROOT / "templates"
+DEFAULT_PLAYBOOK_DIR = _REPO_ROOT  / "playbook"
 
-DEFAULT_SSH_CONFIG = "/home/fabric/work/fabric_config/ssh_config"
+DEFAULT_SSH_CONFIG = _REPO_ROOT / ".fabric" / "ssh_config"
 DEFAULT_RKE2_TOKEN = "fabric-rke2-cluster-token"
 DEFAULT_DATAPLANE_GATEWAY = "192.168.1.254"
 DEFAULT_PLAYBOOKS = ("playbook-prereqs.yml", "playbook-rke2.yml")
