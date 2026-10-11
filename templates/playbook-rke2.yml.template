@@ -331,7 +331,7 @@
           ports:
             - port: 80
               targetPort: 80
-              nodePort: 30080
+              nodePort: 30090
         EOF
       args:
         executable: /bin/bash
@@ -357,7 +357,7 @@
 
     - name: Show expected 200 returned value for curl
       ansible.builtin.shell: |
-        curl -s -o /dev/null -w '%{http_code}\n' http://__RKE2_SERVER_PRIVATE_IP__:30080/
+        curl -s -o /dev/null -w '%{http_code}\n' http://__RKE2_SERVER_PRIVATE_IP__:30090/
       register: curl_out
       changed_when: false
 

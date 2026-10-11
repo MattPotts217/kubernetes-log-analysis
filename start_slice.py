@@ -155,7 +155,7 @@ for siteName in siteList:
     print(stdout)
     
     print("==== curl via NodePort on dataplane ====")
-    stdout, stderr = server.execute("curl -s -o /dev/null -w '%{http_code}\n' http://192.168.1.1:30080/", quiet=True)
+    stdout, stderr = server.execute("curl -s -o /dev/null -w '%{http_code}\n' http://192.168.1.1:30090/", quiet=True)
     if stdout.strip() == "200":
         print(f"{siteName} works ...")
         break

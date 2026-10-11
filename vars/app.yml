@@ -1,0 +1,33 @@
+app_namespace: log-analyzer
+image_repo_prefix: pottsmatt217/log-analyzer
+image_tag: "0.1.0"
+ports:
+  storage:   8001
+  analyzer:  8002
+  ingester:  8003
+  dashboard: 8080
+node_ports:
+  ingester:  30081
+  dashboard: 30082
+resources:
+  storage:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits:   { cpu: "1",  memory: 512Mi }
+  analyzer:
+    requests: { cpu: 250m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+  ingester:
+    requests: { cpu: 200m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+  audit_sidecar:
+    requests: { cpu: 50m,  memory: 64Mi }
+    limits:   { cpu: 200m, memory: 128Mi }
+  dashboard:
+    requests: { cpu: 50m,  memory: 32Mi }
+    limits:   { cpu: 200m, memory: 64Mi }
+replicas:
+  storage: 1
+  analyzer_min: 3
+  analyzer_max: 8
+  ingester: 1
+  dashboard: 1
