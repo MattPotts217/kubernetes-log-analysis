@@ -22,7 +22,7 @@ from utils.ansible import generate_rke2_playbooks
 
 # Set up fabric
 os.chdir(Path.cwd())
-fabric_rc_path = str(Path.cwd() / 'keys' / 'fabric_rc')
+fabric_rc_path = str(Path.cwd() / '.fabric' / 'fabric_rc')
 
 fablib = fablib_manager(fabric_rc=fabric_rc_path)
 fablib.verify_and_configure()
@@ -137,6 +137,16 @@ for siteName in siteList:
         if rke2_result.returncode != 0:
             print(f"{siteName}: RKE2 playbook failed")
             slice.delete()
+            continue
+
+        print("==== Running App playbook ====")
+        app_result = subprocess.run(["ansible-playbook","-i", "playbook/inventory.yml", "playbook-app.yml",],
+            stdout=log_file,stderr=subprocess.STDOUT,text=True,
+        )
+
+        if rke2_result.returncode != 0:
+            print(f"{siteName}: App playbook failed")
+            print("Cluster is available, fix the manifests and rerun: ansible-playbook -i playbook/inventory.yml playbook-app.yml")
             continue
 
     # RKE2 Validation
