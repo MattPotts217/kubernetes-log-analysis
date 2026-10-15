@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fabrictestbed_extensions.fablib.fablib import FablibManager as fablib_manager
 
-os.environ['FABRIC_RC_LOCATION'] = str(Path.cwd() / 'keys' / 'fabric_rc')
+os.environ['FABRIC_RC_LOCATION'] = str(Path.cwd() / '.fabric' / 'fabric_rc')
 
 # Find repo root
 for _candidate in [Path.cwd(), *Path.cwd().parents]:
