@@ -365,27 +365,27 @@
       ansible.builtin.debug:
         var: curl_out.stdout_lines
 
-    - name: Install cluster add-ons
-      hosts: rke2_servers
-      become: true
-      vars:
-        kubectl: /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml
-        local_path_version: v0.0.37
-      tasks:
-        - name: Install local-path-provisioner
-          ansible.builtin.command: >
-            {{ kubectl }} apply -f
-            https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ local_path_version }}/deploy/local-path-storage.yaml
-          register: lpp_apply
-          changed_when: "'created' in lpp_apply.stdout or 'configured' in lpp_apply.stdout"
+- name: Install cluster add-ons
+  hosts: rke2_servers
+  become: true
+  vars:
+    kubectl: /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml
+    local_path_version: v0.0.37
+  tasks:
+    - name: Install local-path-provisioner
+      ansible.builtin.command: >
+        {{ kubectl }} apply -f
+        https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ local_path_version }}/deploy/local-path-storage.yaml
+      register: lpp_apply
+      changed_when: "'created' in lpp_apply.stdout or 'configured' in lpp_apply.stdout"
 
-        - name: Make local-path the default StorageClass
-          ansible.builtin.command: >
-            {{ kubectl }} patch storageclass local-path -p
-            '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-          changed_when: false
+    - name: Make local-path the default StorageClass
+      ansible.builtin.command: >
+        {{ kubectl }} patch storageclass local-path -p
+        '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+      changed_when: false
 
-        - name: Wait for local-path-provisioner to be ready
-          ansible.builtin.command: >
-            {{ kubectl }} -n local-path-storage rollout status deployment/local-path-provisioner --timeout=120s
-          changed_when: false
+    - name: Wait for local-path-provisioner to be ready
+      ansible.builtin.command: >
+        {{ kubectl }} -n local-path-storage rollout status deployment/local-path-provisioner --timeout=120s
+      changed_when: false

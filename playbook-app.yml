@@ -21,9 +21,9 @@
     - name: Render manifests onto the server node
       ansible.builtin.template:
         src: "{{ item }}"
-        dest: "{{ manifest_dir }}/{{ item | basename | regex_replace('\\.j2$', '') }}"
+        dest: "{{ manifest_dir }}/{{ item | basename }}"
         mode: "0644"
-      loop: "{{ query('fileglob', playbook_dir ~ '/manifests/*.yml.j2') | sort }}"
+      loop: "{{ query('fileglob', playbook_dir ~ '/manifests/*.yml') | sort }}"
 
     - name: Apply manifests
       ansible.builtin.command: "{{ kubectl }} apply -f {{ manifest_dir }}"

@@ -144,7 +144,7 @@ for siteName in siteList:
             stdout=log_file,stderr=subprocess.STDOUT,text=True,
         )
 
-        if rke2_result.returncode != 0:
+        if app_result.returncode != 0:
             print(f"{siteName}: App playbook failed")
             print("Cluster is available, fix the manifests and rerun: ansible-playbook -i playbook/inventory.yml playbook-app.yml")
             continue
