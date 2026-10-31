@@ -1,0 +1,12 @@
+name: log-analyzer
+
+services:
+  storage:
+    build: services/storage
+    volumes:
+      - storage-data:/data
+    ports:
+      - "8001:8001"
+
+volumes: 
+  storage-data:

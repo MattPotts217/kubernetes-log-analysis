@@ -1,5 +1,5 @@
 app_namespace: log-analyzer
-image_repo_prefix: pottsmatt217/log-analyzer
+image_repo: pottsmatt217/log-analyzer
 image_tag: "0.1.0"
 ports:
   storage:   8001
