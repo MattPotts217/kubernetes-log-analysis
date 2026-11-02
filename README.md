@@ -71,3 +71,52 @@ Then deploy the app:
 ```bash
 ansible-playbook -i playbook/inventory.yml playbook-app.yml
 ```
+
+## Alerts Details
+
+# Timestamps
+
+- All times are ISO 8601 in UTC: `2026-11-02T22:34:18Z`.
+- Storage records its own `received_at` time for every event. The 60-second brute-force window uses `received_at`, because the sender's clock can be wrong or faked.
+- The sender's `timestamp` is kept as `event_time` and used for display.
+
+# Severity
+
+Levels: `low`, `medium`, `high`, `critical`.
+
+| Rule | Severity |
+|---|---|
+| Data exfiltration (request over 100 MB) | critical |
+| Brute force (more than 5 failed logins from one IP in 60 seconds) | high |
+| SQL injection, confidence ≥ 0.8 | high |
+| SQL injection, confidence < 0.8 | medium |
+
+# GET /alerts response
+
+```json
+{
+  "alerts": [
+    {
+      "id": "uuid",
+      "rule": "sql_injection",
+      "severity": "high",
+      "confidence": 0.9,
+      "source_ip": "203.0.113.7",
+      "event_time": "2026-11-02T22:34:18Z",
+      "received_at": "2026-11-02T22:34:18Z",
+      "description": "string"
+    }
+  ]
+}
+```
+
+
+# Repeated brute-force alerts
+
+An IP gets at most one brute-force alert per 60-second window. Storage enforces this in a single transaction: it inserts the alert only if no brute-force alert exists for that IP in the last 60 seconds. If each analyzer replica checked for itself instead, two replicas could see the 6th failure at the same moment and both create an alert.
+
+# Storage tables (SQLite)
+
+- **alerts**: `id` (UUID), `rule`, `severity`, `confidence`, `source_ip`, `event_time`, `received_at`, `description`
+- **failed_logins**: `source_ip`, `received_at`, indexed on `(source_ip, received_at)`
+- **audit_records**: `id`, `request_id`, `method`, `path`, `source_ip`, `status`, `received_at`. Append-only
