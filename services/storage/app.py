@@ -29,7 +29,11 @@ def save_alert():
 # get alerts
 @app.get("/alerts")
 def get_alerts():
-    return jsonify(alerts=[]), 501
+    try:
+        alerts = cursor.fetchall()
+        return jsonify(alerts=alerts), 200
+    except Exception as e:
+        return jsonify(f"Unable to get alerts: {e}"), 500
 
 def create_tables():
     try:
