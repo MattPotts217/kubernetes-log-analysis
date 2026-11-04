@@ -22,9 +22,24 @@ def save_alert():
         alert = request.get_json()
         alert["id"] = str(uuid.uuid4())
         alert["received_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        cursor.execute(f"""
+                       INSERT INTO alerts (
+                        id,
+                        rule,
+                        severity,
+                        confidence,
+                        source_ip,
+                        event_time,
+                        received_at,
+                        description
+                        )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                       """, (alert["id"], alert["rule"], alert["severity"], alert["confidence"], alert["source_ip"], alert["event_time"], alert["received_at"], alert["description"]))
+        connection.commit()
         return jsonify(alert), 201
-    except:
-        return jsonify("Unable to post alert"), 500
+    except Exception as e:
+        return jsonify(f"Unable to post alert {e}"), 500
 
 # get alerts
 @app.get("/alerts")
