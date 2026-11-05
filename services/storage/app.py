@@ -45,11 +45,14 @@ def save_alert():
 @app.get("/alerts")
 def get_alerts():
     try:
-        alerts = cursor.fetchall()
+        alerts = connection.execute(
+            "SELECT * FROM alerts ORDER BY received_at DESC"
+        ).fetchall()
         return jsonify(alerts=alerts), 200
     except Exception as e:
         return jsonify(f"Unable to get alerts: {e}"), 500
 
+# create tables on startup
 def create_tables():
     try:
         connection.execute("PRAGMA journal_mode=WAL")
