@@ -8,5 +8,17 @@ services:
     ports:
       - "8001:8001"
 
+
+x-config: &config
+  STORAGE_URL: http://storage:8001
+  ANALYZER_URL: http://analyzer:8002
+  BRUTE_FORCE_THRESHOLD: "5"
+  BRUTE_FORCE_WINDOW_SECONDS: "60"
+  EXFIL_BYTES: "104857600"
+  SQLI_HIGH_CONFIDENCE: "0.8"
+  FAILED_LOGIN_EVENTS: login_failed
+  AUDIT_LOG: /audit/audit.log
+
+
 volumes: 
   storage-data:

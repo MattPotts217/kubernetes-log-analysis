@@ -25,10 +25,12 @@ def save_alert():
         alert = request.get_json()
         alert["id"] = str(uuid.uuid4())
         alert["received_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-        if not alert["rule"]:
-            return jsonify(error="rule required"), 400
-        if not alert["severity"]:
-            return jsonify(error="severity required"), 400
+        
+        required = ["rule", "severity"]
+        missing = [f for f in required if alert.get(f) in (None, "")]
+        if missing:
+            return jsonify(error=f"missing fields: {', '.join(missing)}"), 400
+        
         cursor.execute(f"""
                        INSERT INTO alerts (
                         id,
@@ -41,7 +43,7 @@ def save_alert():
                         description
                         )
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                       """, (alert["id"], alert["rule"], alert["severity"], alert.get("confidence"), alert["source_ip"], alert["event_time"], alert["received_at"], alert.get("description")))
+                       """, (alert["id"], alert["rule"], alert["severity"], alert.get("confidence"), alert.get("source_ip"), alert.get("event_time"), alert["received_at"], alert.get("description")))
         connection.commit()
         return jsonify(alert), 201
     except Exception as e:
@@ -63,8 +65,12 @@ def get_alerts():
 def post_failed_logins():
     body = request.get_json()
     source_ip = body.get("source_ip")
-    if not source_ip:
-        return jsonify(error='source_ip required'), 400
+    
+    required = ["source_ip"]
+    missing = [f for f in required if body.get(f) in (None, "")]
+    if missing:
+        return jsonify(error=f"missing fields: {', '.join(missing)}"), 400
+    
     window = int(body.get("window_seconds", 60))
     now = datetime.now(timezone.utc)
 
@@ -98,6 +104,33 @@ def get_audits():
         return jsonify(audits=audits), 200
     except Exception as e:
         return jsonify(f"Unable to get audit records"), 500
+    
+@app.post("/audits")
+def post_audits():
+    body = request.get_json()
+    required = ["request_id", "method", "path", "status"]
+    
+    missing = [f for f in required if body.get(f) in (None, "")]
+    if missing:
+        return jsonify(error=f"missing fields: {', '.join(missing)}"), 400
+    
+    try:
+        received_at = body.get("received_at") or iso(datetime.now(timezone.utc))
+        cursor.execute(f"""
+                        INSERT INTO audit_records (
+                            request_id,
+                            method,
+                            path,
+                            source_ip,
+                            status,
+                            received_at
+                            )
+                                VALUES (?, ?, ?, ?, ?, ?)
+                        """, (body["request_id"], body["method"], body["path"], body.get("source_ip"), body["status"], received_at))
+        connection.commit()
+        return jsonify(id=cursor.lastrowid), 201
+    except Exception as e:
+        return jsonify(error=f"unable to post audit: {e}"), 500
 
 
 # create tables on startup

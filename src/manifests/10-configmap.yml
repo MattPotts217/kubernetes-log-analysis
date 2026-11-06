@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-analyzer-config
+  namespace: {{ app_namespace }}
+data:
+  STORAGE_URL: "http://storage:{{ ports.storage }}"
+  ANALYZER_URL: "http://analyzer:{{ ports.analyzer }}"
+
+  # Rule thresholds
+  BRUTE_FORCE_THRESHOLD: "5"
+  BRUTE_FORCE_WINDOW_SECONDS: "60"
+  EXFIL_BYTES: "104857600"          
+  SQLI_HIGH_CONFIDENCE: "0.8"       
+  FAILED_LOGIN_EVENTS: "login_failed"
+
+  # audit file for ingester/ sidecar
+  AUDIT_LOG: "/audit/audit.log"
