@@ -1,16 +1,30 @@
-import time
-import os
-import subprocess
-import sys
-
-from ipaddress import IPv4Network
 from pathlib import Path
-
 from fabrictestbed_extensions.fablib.fablib import FablibManager as fablib_manager
+import socket
+import sys
+from ipaddress import IPv4Network
+import subprocess
 
-os.environ['FABRIC_RC_LOCATION'] = str(Path.cwd() / '.fabric' / 'fabric_rc')
 
-# Find repo root
+# Force IPv4: one of the bastion's IPv6 addresses is unreachable and paramiko hangs on it
+_orig_getaddrinfo = socket.getaddrinfo
+def _ipv4_only(host, port, family=0, *args, **kwargs):
+    return _orig_getaddrinfo(host, port, socket.AF_INET, *args, **kwargs)
+socket.getaddrinfo = _ipv4_only
+
+nodeCnt = 3   # number of nodes
+coreCnt = 4   # number of CPUs per node
+memSize = 8  # memory per node
+diskSize = 30 # storage per node
+
+TEMPLATES_DIR = Path("templates").resolve()
+PLAYBOOK_DIR = Path("playbook").resolve()
+PLAYBOOK_DIR.mkdir(exist_ok=True)
+assert (TEMPLATES_DIR / "host.yml.template").exists(), f"not found in {TEMPLATES_DIR}"
+
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
+
 for _candidate in [Path.cwd(), *Path.cwd().parents]:
     if (_candidate / "utils" / "ansible.py").exists():
         sys.path.insert(0, str(_candidate))
@@ -20,36 +34,32 @@ else:
 
 from utils.ansible import generate_rke2_playbooks
 
-# Set up fabric
-os.chdir(Path.cwd())
-fabric_rc_path = str(Path.cwd() / '.fabric' / 'fabric_rc')
-
-fablib = fablib_manager(fabric_rc=fabric_rc_path)
+fablib = fablib_manager(fabric_rc=str(Path.cwd() / ".fabric" / "fabric_rc"))
 fablib.verify_and_configure()
 
-# Find a Site With Enough Capacity
+# change the user name to your username
+slicePrefix = "pottsmatt217-project-"
+network_name = "project-network"
+nic_name = "projectnic"
 
+# calculate resource requirements
+minCores = nodeCnt * coreCnt * 2
+minMem = nodeCnt * memSize * 2
+
+# lauching site
 resources = fablib.get_resources()
 resources.update()
-siteList = resources.get_site_names()
+sites = resources.get_site_names()
+selectedSite = ""
 
-nodesReq,coresReq,ramReq = 2,8,10
-
-# Scale up quite a bit to ensure there are plenty of resources available.
-totalCoreAvail = nodesReq * coresReq * 2
-totalRamAvail = nodesReq * ramReq * 2
-
-for siteName in siteList:
-    cores = resources.get_core_available(siteName)
-    ram = resources.get_ram_available(siteName)
-    if cores < totalCoreAvail or ram < totalRamAvail:
-        print(f"{siteName} does not have enough free cores/RAM")
+for site in sites:
+    cores = resources.get_core_available(site)
+    ram = resources.get_ram_available(site)
+    if cores < minCores or ram < minMem:
         continue
-    sliceName = "project-" + siteName
-    network_name = "project"
+    sliceName = slicePrefix + site
 
     # Clean up left-over slices with the same names
-    existing = None
     for s in fablib.get_slices():
         if s.get_name() == sliceName:
             print(f"Deleting existing slice: {sliceName}")
@@ -59,113 +69,94 @@ for siteName in siteList:
     # Set up new slice
     slice = fablib.new_slice(name=sliceName)
     net = slice.add_l2network(name=network_name, subnet=IPv4Network("192.168.1.0/24"))
-    
-    for i in range(1, nodesReq + 1):
+
+    for i in range(1, nodeCnt + 1):
         node = slice.add_node(name=f"node{i}",
-                              site=siteName,
-                              cores=coresReq,ram=ramReq,disk=50,
+                              site=site,
+                              cores=coreCnt,ram=memSize,disk=diskSize,
                               image="default_ubuntu_22",)
-        iface = node.add_component(model="NIC_Basic", name="nic").get_interfaces()[0]
+        iface = node.add_component(model="NIC_Basic", name=nic_name).get_interfaces()[0]
         iface.set_mode("config")
         net.add_interface(iface)
 
     print("==========================================================================")
     try:
-        print(f"Submitting slice at {siteName}...")
-        slice.submit(progress=False)
+        print(f"Submitting slice at {site}...")
+        slice.submit(progress=False, wait=True)
     except Exception as e:
-        print(f"{siteName}: slice submission failed with error {e}")
+        print(f"{site}: slice submission failed with error {e}")
         try:
             slice.delete()
         except Exception:
             pass
         continue
 
-    while True:
-        time.sleep(10)
-        slice.update()
-        slice_state = slice.get_state()
-        print(f"Slice state: {slice_state}")
-        if slice_state == "Closing":
-            print(f"Need to find new site")
-            break
-        else: 
-            print("Slice stable:", slice.isStable())
-        nodes = slice.get_nodes()
-        if all(node.get_management_ip() is not None for node in nodes):
-            for node in nodes:
-                print("----", node.get_name(), "----")
-                print("management ip:", node.get_management_ip())
-                print(node.get_ssh_command())
-            break
-            
+    slice.update()
+    if slice.get_state() == "Closing":
+        print(f"{site}: slice is closing, need to find new site")
+        try:
+            slice.delete()
+        except Exception:
+            pass
+        continue
+
     # Setup networking
-    for i in range(nodesReq):
-        node = slice.get_node(name=f"node{i + 1}")
+    for i in range(1, nodeCnt + 1):
+        node = slice.get_node(name=f"node{i}")
         iface = node.get_interface(network_name=network_name)
         iface.ip_link_up()
         iface.ip_addr_add(
-            addr=f"192.168.1.{i + 1}",
+            addr=f"192.168.1.{i}",
             subnet=IPv4Network("192.168.1.0/24"),
         )
-        print(f"{node.get_name()} -> 192.168.1.{i + 1}")
-    
-    # Ansible preparation: generate inventory + playbooks from templates
-    generate_rke2_playbooks(slice, fablib, network_name)
+        print(f"{node.get_name()} -> 192.168.1.{i}")
 
-    # Playbook: Host Prerequisites
+    selectedSite = site
+    print(f"Slice at {selectedSite} is stable: {slice.isStable()}")
+    break
 
-    Path("logs").mkdir(exist_ok=True)
-    log_path = Path("logs") / f"{siteName}-ansible.log"
+if not selectedSite:
+    sys.exit("No site had enough resources or every submission failed")
 
+sliceName = slicePrefix + selectedSite
+slice = fablib.get_slice(name=sliceName)
+
+generate_rke2_playbooks(slice, fablib, network_name, templates_dir=TEMPLATES_DIR, playbook_dir=PLAYBOOK_DIR)
+
+
+def run_playbook(name, label, template=False):
+    if template:
+        playbook = PLAYBOOK_DIR / f"playbook-{name}.yml"
+    else:
+        playbook = Path(f"playbook-{name}.yml").resolve()
+
+    log_path = LOG_DIR / f"{selectedSite}-ansible-{name}.log"
     with open(log_path, "w") as log_file:
-        print("==== Running prerequisite playbook ====")
-        prereq_result = subprocess.run(["ansible-playbook","-i","playbook/inventory.yml","playbook/playbook-prereqs.yml",],
-            stdout=log_file,stderr=subprocess.STDOUT,text=True,
-        )
-    
-        if prereq_result.returncode != 0:
-            print(f"{siteName}: prerequisite playbook failed")
-            slice.delete()
-            continue
-    
-        print("==== Running RKE2 playbook ====")
-        rke2_result = subprocess.run(["ansible-playbook","-i","playbook/inventory.yml","playbook/playbook-rke2.yml",],
-            stdout=log_file,stderr=subprocess.STDOUT,text=True,
-        )
-    
-        if rke2_result.returncode != 0:
-            print(f"{siteName}: RKE2 playbook failed")
-            slice.delete()
-            continue
+        print(f"==== Running {label} playbook ====")
+        result = subprocess.run(["ansible-playbook","-i",
+                                 str(PLAYBOOK_DIR / "inventory.yml"),
+                                 str(playbook),],
+            stdout=log_file,stderr=subprocess.STDOUT,text=True,)
 
-        print("==== Running App playbook ====")
-        app_result = subprocess.run(["ansible-playbook","-i", "playbook/inventory.yml", "playbook-app.yml",],
-            stdout=log_file,stderr=subprocess.STDOUT,text=True,
-        )
+    if result.returncode != 0:
+        sys.exit(f"{selectedSite}: {label} playbook failed, see {log_path}")
+    print(f"{label} playbook is completed")
 
-        if app_result.returncode != 0:
-            print(f"{siteName}: App playbook failed")
-            print("Cluster is available, fix the manifests and rerun: ansible-playbook -i playbook/inventory.yml playbook-app.yml")
-            continue
 
-    # RKE2 Validation
+run_playbook("prereqs", "Prerequisite", True)
+run_playbook("nfs", "NFS")
+run_playbook("rke2", "RKE2", True)
+run_playbook("app", "App")
 
-    server = slice.get_node("node1")
-    print("==== nodes ====")
-    stdout, stderr = server.execute("kubectl get nodes -o wide", quiet=True)
-    print(stdout)
-    
-    print("==== nginx-demo ====")
-    stdout, stderr = server.execute("kubectl get pods -l app=nginx-demo -o wide", quiet=True)
-    print(stdout)
+# RKE2 Validation
 
-    print("==== nginx-demo ====")
-    stdout, stderr = server.execute("kubectl get svc -l app=nginx-demo -o wide", quiet=True)
-    print(stdout)
-    
-    print("==== curl via NodePort on dataplane ====")
-    stdout, stderr = server.execute("curl -s -o /dev/null -w '%{http_code}\n' http://192.168.1.1:30090/", quiet=True)
-    if stdout.strip() == "200":
-        print(f"{siteName} works ...")
-        break
+server = slice.get_node("node1")
+print("==== nodes ====")
+stdout, stderr = server.execute("kubectl get nodes -o wide", quiet=True)
+print(stdout)
+
+nodes = slice.get_nodes()
+for node in nodes:
+    print("----", node.get_name(), "----")
+    print("management ip:", node.get_management_ip())
+    print(node.get_ssh_command())
