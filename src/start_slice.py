@@ -1,9 +1,16 @@
 from pathlib import Path
 from fabrictestbed_extensions.fablib.fablib import FablibManager as fablib_manager
+import os
 import socket
 import sys
 from ipaddress import IPv4Network
 import subprocess
+
+from utils.ansible import generate_rke2_playbooks
+
+# Run from src/ so relative paths (fabric_rc keys, ssh_config, inventory, logs) resolve
+SRC_DIR = Path(__file__).resolve().parent
+os.chdir(SRC_DIR)
 
 
 # Force IPv4: one of the bastion's IPv6 addresses is unreachable and paramiko hangs on it
@@ -17,24 +24,15 @@ coreCnt = 4   # number of CPUs per node
 memSize = 8  # memory per node
 diskSize = 30 # storage per node
 
-TEMPLATES_DIR = Path("templates").resolve()
-PLAYBOOK_DIR = Path("playbook").resolve()
+TEMPLATES_DIR = SRC_DIR / "templates"
+PLAYBOOK_DIR = SRC_DIR / "playbook"
 PLAYBOOK_DIR.mkdir(exist_ok=True)
 assert (TEMPLATES_DIR / "host.yml.template").exists(), f"not found in {TEMPLATES_DIR}"
 
-LOG_DIR = Path("logs")
+LOG_DIR = SRC_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
-for _candidate in [Path.cwd(), *Path.cwd().parents]:
-    if (_candidate / "utils" / "ansible.py").exists():
-        sys.path.insert(0, str(_candidate))
-        break
-else:
-    raise ImportError("Could not find repo root containing utils/ansible.py")
-
-from utils.ansible import generate_rke2_playbooks
-
-fablib = fablib_manager(fabric_rc=str(Path.cwd() / ".fabric" / "fabric_rc"))
+fablib = fablib_manager(fabric_rc=str(SRC_DIR / ".fabric" / "fabric_rc"))
 fablib.verify_and_configure()
 
 # change the user name to your username
@@ -128,7 +126,7 @@ def run_playbook(name, label, template=False):
     if template:
         playbook = PLAYBOOK_DIR / f"playbook-{name}.yml"
     else:
-        playbook = Path(f"playbook-{name}.yml").resolve()
+        playbook = SRC_DIR / f"playbook-{name}.yml"
 
     log_path = LOG_DIR / f"{selectedSite}-ansible-{name}.log"
     with open(log_path, "w") as log_file:

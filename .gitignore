@@ -1,9 +1,9 @@
 keys
 .venv
-.fabric/fabric_rc
-.fabric/ssh_config
+src/.fabric/fabric_rc
+src/.fabric/ssh_config
 .ds_store
-/playbook
+src/playbook
 logs
 __pycache__
 .vscode
