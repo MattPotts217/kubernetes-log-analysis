@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: storage
-          image: "{{ image_repo }}:storage-{{ image_tag }}"
+          image: "{{ image_repo }}:storage-{{ image_tag_storage }}"
           ports:
             - containerPort: {{ ports.storage }}
           env:

@@ -10,6 +10,8 @@ db = os.environ.get("DB_PATH", "/data/alerts.db")
 connection = sqlite3.connect(db)
 cursor = connection.cursor()
 
+connection.row_factory = sqlite3.Row
+
 def iso(timestamp):
     return timestamp.isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -56,7 +58,7 @@ def get_alerts():
         alerts = connection.execute(
             "SELECT * FROM alerts ORDER BY received_at DESC"
         ).fetchall()
-        return jsonify(alerts=alerts), 200
+        return jsonify(alerts=[dict(r) for r in alerts]), 200
     except Exception as e:
         return jsonify(f"Unable to get alerts: {e}"), 500
     
