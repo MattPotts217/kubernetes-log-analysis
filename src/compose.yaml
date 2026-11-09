@@ -1,6 +1,12 @@
 name: log-analyzer
 
 services:
+  dashboard:
+    build: services/dashboard
+    ports:
+      - "8080:8080"
+    depends_on:
+      - storage
   storage:
     build: services/storage
     volumes:
