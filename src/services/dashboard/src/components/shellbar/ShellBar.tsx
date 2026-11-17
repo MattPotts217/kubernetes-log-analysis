@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import './ShellBar.scss';
 
 export default function ShellBar() {
