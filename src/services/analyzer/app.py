@@ -38,9 +38,7 @@ def check_sqli(log):
     details = log.get("details")
     if not details:
         return None
-    confidence = calculate_sqli_confidence(details)
-    score = confidence["score"]
-    hits = confidence["hits"]
+    score, hits = calculate_sqli_confidence(details)
 
     if score < 0.3:
         return None
@@ -57,7 +55,7 @@ def check_sqli(log):
     return {
         "rule": "sql_injection",
         "severity": severity,
-        "confidence": round(confidence, 2),
+        "confidence": round(score, 2),
         "source_ip": source_ip,
         "event_time": event_time,
         "description": f"SQL injection patterns: {', '.join(hits)}"
@@ -73,8 +71,18 @@ def check_brute_force(log):
 @app.post("/analyze")
 def analyze():
     log = request.get_json()
+    alerts = []
     if log.get("bytes"):
         exfil_check = check_exfil(log)
+        if exfil_check:
+            alerts.append(exfil_check)
+    
     sqli_check = check_sqli(log)
+    if sqli_check:
+            alerts.append(sqli_check)
+
     brute_force_check = check_brute_force(log)
-    return jsonify(log=log), 200
+    if brute_force_check:
+            alerts.append(brute_force_check)
+
+    return jsonify(alerts=alerts), 200
