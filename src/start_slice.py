@@ -98,6 +98,11 @@ for site in sites:
             pass
         continue
 
+    for node in slice.get_nodes():
+        print("----", node.get_name(), "----")
+        print("management ip:", node.get_management_ip())
+        print(node.get_ssh_command())
+
     # Setup networking
     for i in range(1, nodeCnt + 1):
         node = slice.get_node(name=f"node{i}")

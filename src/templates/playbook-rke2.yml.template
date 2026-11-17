@@ -110,11 +110,17 @@
             - "{{ inventory_hostname }}"
             - "127.0.0.1"
 
+    # Downloads from GitHub can drop partway through on FABRIC, so retry.
+    # pipefail makes a failed curl fail the task instead of piping an empty script to sh.
     - name: Install RKE2 server
-      ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
+      ansible.builtin.shell: set -o pipefail && curl -sfL https://get.rke2.io | sh -
       args:
         creates: /usr/local/bin/rke2
         executable: /bin/bash
+      register: rke2_server_install
+      retries: 3
+      delay: 20
+      until: rke2_server_install is succeeded
 
     - name: Ensure server manifests directory exists
       ansible.builtin.file:
@@ -221,12 +227,16 @@
           node-ip: "{{ private_ip }}"
 
     - name: Install RKE2 agent
-      ansible.builtin.shell: curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE="agent" sh -
+      ansible.builtin.shell: set -o pipefail && curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE="agent" sh -
       args:
         creates: /usr/local/bin/rke2
         executable: /bin/bash
       environment:
         INSTALL_RKE2_TYPE: agent
+      register: rke2_agent_install
+      retries: 3
+      delay: 20
+      until: rke2_agent_install is succeeded
 
     - name: Enable and start rke2-agent
       ansible.builtin.systemd:

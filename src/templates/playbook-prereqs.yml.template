@@ -6,6 +6,14 @@
   hosts: all
   become: true
   tasks:
+    # FABRIC sites point apt at a local mirror (e.g. nova.clouds.archive.ubuntu.com)
+    # that can be out of sync and return 404s. Use the main Ubuntu archive instead.
+    - name: Use the main Ubuntu archive instead of the site mirror
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: 'https?://\S*archive\.ubuntu\.com/ubuntu'
+        replace: 'http://archive.ubuntu.com/ubuntu'
+
     - name: Install prerequisite packages
       ansible.builtin.apt:
         name:
@@ -18,6 +26,10 @@
           - apparmor-utils
         state: present
         update_cache: true
+      register: prereq_packages
+      retries: 3
+      delay: 15
+      until: prereq_packages is succeeded
 
     - name: Disable swap (required by Kubernetes)
       ansible.builtin.command: swapoff -a

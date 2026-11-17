@@ -1,15 +1,14 @@
 apiVersion: apps/v1
-kind: deployment
+kind: Deployment
 metadata:
   name: dashboard
   namespace: {{ app_namespace }}
 spec:
-  serviceName: dashboard
   replicas: {{ replicas.dashboard }}
   selector:
     matchLabels:
       app: dashboard
-  temlate:
+  template:
     metadata:
       labels:
         app: dashboard
@@ -28,7 +27,7 @@ spec:
           resources: {{ resources.dashboard | to_json }}
 ---
 apiVersion: v1
-kind: service
+kind: Service
 metadata:
   name: dashboard
   namespace: {{ app_namespace }}
@@ -37,6 +36,6 @@ spec:
   selector: 
     app: dashboard
   ports:
-    - ports: {{ ports.dashboard }}
+    - port: {{ ports.dashboard }}
       targetPort: {{ports.dashboard }}
-      nodePort: {{node_port.dashboard}}
+      nodePort: {{ node_ports.dashboard }}

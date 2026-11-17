@@ -28,22 +28,22 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
-    volumeClaimTemplates:
-      - metadata:
-          name: data
-        spec:
-          accessModes: [ReadWriteOnce]
-          resources:
-            requests:
-              storage: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi
 ---
 apiVersion: v1
-kind: service
+kind: Service
 metadata: 
   name: storage
   namespace: {{ app_namespace }}
 spec:
-  type: CluserIP
+  type: ClusterIP
   selector:
     app: storage
   ports:
