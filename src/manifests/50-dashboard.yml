@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: deployment
+metadata:
+  name: dashboard
+  namespace: {{ app_namespace }}
+spec:
+  serviceName: dashboard
+  replicas: {{ replicas.dashboard }}
+  selector:
+    matchLabels:
+      app: dashboard
+  temlate:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: "{{ image_repo }}:dashboard-{{ image_tag_dashboard }}"
+          ports:
+            - containerPort: {{ ports.dashboard }}
+          readinessProbe:
+            httpGet: { path: /healthz, port: {{ports.dashboard}} }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: {{ ports.dashboard}} }
+            periodSeconds: 10
+          resources: {{ resources.dashboard | to_json }}
+---
+apiVersion: v1
+kind: service
+metadata:
+  name: dashboard
+  namespace: {{ app_namespace }}
+spec:
+  type: NodePort
+  selector: 
+    app: dashboard
+  ports:
+    - ports: {{ ports.dashboard }}
+      targetPort: {{ports.dashboard }}
+      nodePort: {{node_port.dashboard}}
