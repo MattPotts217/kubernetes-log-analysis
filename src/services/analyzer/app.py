@@ -90,8 +90,19 @@ def check_exfil(log):
     }
     
 
-def check_brute_force(log):
-    pass
+def check_brute_force(log,count):
+    if count != BRUTE_FORCE_THRESHOLD + 1:
+        return None
+    source_ip = log.get("source_ip")
+    event_time = log.get("event_time")
+    return {
+        "rule": "brute_force",
+        "severity": "critical",
+        "confidence": 1.0,
+        "source_ip": source_ip,
+        "event_time": event_time,
+        "description": f"brute force attempt from {source_ip}"
+    }
 
 @app.post("/analyze")
 def analyze():
