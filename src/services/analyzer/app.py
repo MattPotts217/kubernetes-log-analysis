@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+import requests
 import os
 import re
 
@@ -104,6 +105,20 @@ def check_brute_force(log,count):
         "description": f"brute force attempt from {source_ip}"
     }
 
+def record_failed_login(log):
+    req = requests.post(
+        f"{STORAGE_URL}/failed-logins",
+        json={"source_ip": log["source_ip"], "window_seconds": BRUTE_FORCE_WINDOW_SECONDS},
+        timeout=2
+    )
+    req.raise_for_status()
+    return req.json()["count"]
+
+def save_alert(alert):
+    req = requests.post(f"{STORAGE_URL}/alerts", json=alert, timeout=2)
+    req.raise_for_status()
+
+
 @app.post("/analyze")
 def analyze():
     log = request.get_json()
@@ -115,10 +130,18 @@ def analyze():
     
     sqli_check = check_sqli(log)
     if sqli_check:
-            alerts.append(sqli_check)
+        alerts.append(sqli_check)
 
-    brute_force_check = check_brute_force(log)
-    if brute_force_check:
+    if log.get("event_type") in FAILED_LOGIN_EVENTS and log.get("source_ip"):
+        count = record_failed_login(log)
+        brute_force_check = check_brute_force(log, count)
+        if brute_force_check:
             alerts.append(brute_force_check)
+    try:
+        for alert in alerts:
+            save_alert(alert)
+    except requests.RequestException as e:
+        app.logger.error(f"Call to storage failed: {e}")
+        return jsonify(error="storage unavailable"), 503
 
     return jsonify(alerts=alerts), 200
