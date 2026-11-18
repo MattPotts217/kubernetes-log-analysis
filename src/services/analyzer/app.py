@@ -63,7 +63,32 @@ def check_sqli(log):
 
 
 def check_exfil(log):
-    pass
+    details = log.get("details")
+    size = int(log.get("bytes") or 0)
+    if size <= EXFIL_BYTES:
+        return None
+    
+    ratio = size / EXFIL_BYTES
+    if ratio > 10:
+        severity, confidence = "critical", 0.9
+    elif 2 <= ratio <= 9:
+        severity, confidence = "high", 0.7
+    elif 1 <= ratio <= 2:
+        severity, confidence = "medium", 0.5
+    else:
+        severity, confidence = None, None
+
+    source_ip = log.get("source_ip")
+    event_time = log.get("event_time")
+    return {
+        "rule": "exfiltration",
+        "severity": severity,
+        "confidence": confidence,
+        "source_ip": source_ip,
+        "event_time": event_time,
+        "description": f"{size / 1048576:.0f} MB transfer."
+    }
+    
 
 def check_brute_force(log):
     pass
