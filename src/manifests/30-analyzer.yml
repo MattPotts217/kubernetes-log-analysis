@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analyzer
+  namespace: {{ app_namespace }}
+spec:
+  replicas: {{replicas.analyzer_min}}
+  selector:
+    matchLabels:
+      app: analyzer
+  template:
+    metadata:
+      labels:
+        app: analyzer
+    spec:
+      containers:
+        - name: analyzer
+          image: "{{ image_repo }}:analyzer-{{ image_tag_analyzer }}"
+          envFrom:
+            - configMapRef:
+                name: log-analyzer-config
+          ports:
+            - containerPort: {{ ports.analyzer }}
+          readinessProbe:
+            httpGet: { path: /healthz, port: {{ports.analyzer}} }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: {{ ports.analyzer}} }
+            periodSeconds: 10
+          resources: {{ resources.analyzer | to_json }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analyzer
+  namespace: {{ app_namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: analyzer
+  ports:
+    - port: {{ ports.analyzer }}
+      targetPort: {{ports.analyzer}}
