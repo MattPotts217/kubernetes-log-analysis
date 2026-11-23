@@ -3,6 +3,7 @@ name: log-analyzer
 x-config: &config
   STORAGE_URL: http://storage:8001
   ANALYZER_URL: http://analyzer:8002
+  INGESTER_URL: http://ingester:8003
   BRUTE_FORCE_THRESHOLD: "5"
   BRUTE_FORCE_WINDOW_SECONDS: "60"
   EXFIL_BYTES: "104857600"
@@ -31,6 +32,13 @@ services:
       - storage
     ports:
       - "8002:8002"
+  ingester:
+    build: services/ingester
+    environment: *config
+    depends_on:
+      -  analyzer
+    ports:
+      - "8003:8003"
 
 
 volumes: 
